@@ -21,7 +21,7 @@
 #include <scsi/sg.h>
 #include <sys/ioctl.h>
 
-int scsi_get_serial(int fd, void *buf, size_t buf_len)
+int scsi_get_serial(int fd, void *buf, size_t buf_len, unsigned char *removeable)
 {
 	unsigned char rsp_buf[255];
 	unsigned char inq_cmd[] = {INQUIRY, 1, 0x80, 0, sizeof(rsp_buf), 0};
@@ -53,6 +53,9 @@ int scsi_get_serial(int fd, void *buf, size_t buf_len)
 
 	if (!rsp_len || buf_len < rsp_len)
 		return -1;
+
+	if(removeable)
+		*removeable = ((rsp_buf[1] & 0x80) != 0);
 
 	memcpy(buf, &rsp_buf[4], rsp_len);
 

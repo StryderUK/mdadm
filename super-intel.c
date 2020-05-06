@@ -3974,7 +3974,29 @@ static int nvme_get_serial(int fd, void *buf, size_t buf_len)
 	return load_sys(path, buf, buf_len);
 }
 
-extern int scsi_get_serial(int fd, void *buf, size_t buf_len);
+extern int scsi_get_serial(int fd, void *buf, size_t buf_len, unsigned char* removeable);
+
+char *strrev(char *str, int maxlen)
+{
+	char ch;
+	int i = strlen(str) - 1;
+	int j = 0;
+
+	if (!str || ! *str)
+		return str;
+
+	if(i > maxlen) i = maxlen;
+
+	while (i > j)
+	{
+		ch = str[i];
+		str[i] = str[j];
+		str[j] = ch;
+		i--;
+		j++;
+	}
+	return str;
+}
 
 static int imsm_read_serial(int fd, char *devname,
 			    __u8 *serial, size_t serial_buf_len)
@@ -3985,13 +4007,19 @@ static int imsm_read_serial(int fd, char *devname,
 	char *dest;
 	char *src;
 	unsigned int i;
+	__u8 removeable = 0;
 
 	memset(buf, 0, sizeof(buf));
 
 	rv = nvme_get_serial(fd, buf, sizeof(buf));
 
-	if (rv)
-		rv = scsi_get_serial(fd, buf, sizeof(buf));
+	if (rv) {
+		rv = scsi_get_serial(fd, buf, sizeof(buf), &removeable);
+		if(rv == 0 && check_env("IMSM_RM_REVERSE_SERIAL") && removeable == 1) {
+			strrev(buf, sizeof(buf));
+		}
+	}
+
 
 	if (rv && check_env("IMSM_DEVNAME_AS_SERIAL")) {
 		memset(serial, 0, MAX_RAID_SERIAL_LEN);
